@@ -17,7 +17,7 @@ class NasabahController extends Controller
     {
         $data = $request->validate(['nama_siswa'=>'required|string|max:255','kelas'=>'required|string|max:50','email'=>'required|email|unique:users,email','password'=>'required|string|min:8']);
         DB::transaction(function () use ($data) {
-            $user = User::create(['name'=>$data['nama_siswa'],'email'=>$data['email'],'password'=>Hash::make($data['password']),'role'=>'siswa']);
+            $user = User::create(['name'=>$data['nama_siswa'],'email'=>$data['email'],'password'=>Hash::make($data['password']),'role'=>'nasabah']);
             Nasabah::create(['user_id'=>$user->id,'nama_siswa'=>$data['nama_siswa'],'kelas'=>$data['kelas']]);
         });
         return redirect()->route('admin.nasabah.index')->with('success','Nasabah berhasil ditambahkan.');
