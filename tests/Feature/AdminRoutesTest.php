@@ -39,13 +39,13 @@ class AdminRoutesTest extends TestCase
             'name' => 'Siswa',
             'email' => 'siswa@example.test',
             'password' => 'password',
-            'role' => 'siswa',
+            'role' => 'nasabah',
         ]);
         $staff = User::create([
             'name' => 'Petugas',
             'email' => 'petugas@example.test',
             'password' => 'password',
-            'role' => 'petugas_timbangan',
+            'role' => 'petugas_bank_sampah',
         ]);
         $nasabah = Nasabah::create([
             'user_id' => $studentUser->id,
@@ -106,7 +106,7 @@ class AdminRoutesTest extends TestCase
             'name' => 'Siswa',
             'email' => 'siswa@example.test',
             'password' => 'password',
-            'role' => 'siswa',
+            'role' => 'nasabah',
         ]);
 
         $this->actingAs($student)
@@ -125,23 +125,58 @@ class AdminRoutesTest extends TestCase
 
         $this->actingAs($admin);
 
+        $this->get(route('admin.users.create'))
+            ->assertOk()
+            ->assertDontSee('value="siswa"')
+            ->assertDontSee('value="nasabah"')
+            ->assertSee('Petugas Bank Sampah');
+
+        $this->from(route('admin.users.create'))->post(route('admin.users.store'), [
+            'name' => 'Nasabah dari Pengguna',
+            'email' => 'student-through-users@example.test',
+            'password' => 'password123',
+            'role' => 'siswa',
+        ])->assertSessionHasErrors('role');
+        $this->assertDatabaseMissing('users', ['email' => 'student-through-users@example.test']);
+
+        foreach (['petugas_sarpras', 'petugas_timbangan'] as $legacyRole) {
+            $this->from(route('admin.users.create'))->post(route('admin.users.store'), [
+                'name' => 'Role Petugas Lama',
+                'email' => $legacyRole.'@example.test',
+                'password' => 'password123',
+                'role' => $legacyRole,
+            ])->assertSessionHasErrors('role');
+        }
+
         $this->post(route('admin.users.store'), [
             'name' => 'Petugas Baru',
             'email' => 'staff@example.test',
             'password' => 'password123',
-            'role' => 'petugas_sarpras',
+            'role' => 'petugas_bank_sampah',
         ])->assertRedirect(route('admin.users.index'));
 
         $staff = User::where('email', 'staff@example.test')->firstOrFail();
+        $this->from(route('admin.users.edit', $staff))->put(route('admin.users.update', $staff), [
+            'name' => 'Petugas Baru',
+            'email' => 'staff@example.test',
+            'role' => 'petugas_timbangan',
+        ])->assertSessionHasErrors('role');
+
+        $this->from(route('admin.users.edit', $staff))->put(route('admin.users.update', $staff), [
+            'name' => 'Petugas Baru',
+            'email' => 'staff@example.test',
+            'role' => 'siswa',
+        ])->assertSessionHasErrors('role');
+
         $this->put(route('admin.users.update', $staff), [
             'name' => 'Petugas Diubah',
             'email' => 'staff@example.test',
-            'role' => 'petugas_timbangan',
+            'role' => 'petugas_bank_sampah',
         ])->assertRedirect(route('admin.users.index'));
         $this->assertDatabaseHas('users', [
             'email' => 'staff@example.test',
             'name' => 'Petugas Diubah',
-            'role' => 'petugas_timbangan',
+            'role' => 'petugas_bank_sampah',
         ]);
         $this->delete(route('admin.users.destroy', $staff))
             ->assertRedirect(route('admin.users.index'));
@@ -175,7 +210,7 @@ class AdminRoutesTest extends TestCase
         ]);
         $this->assertDatabaseHas('users', [
             'email' => 'student@example.test',
-            'role' => 'siswa',
+            'role' => 'nasabah',
         ]);
 
         $nasabah = Nasabah::where('nama_siswa', 'Siswa Baru')->firstOrFail();
@@ -194,5 +229,41 @@ class AdminRoutesTest extends TestCase
             ->assertRedirect(route('admin.nasabah.index'));
         $this->assertDatabaseMissing('nasabah', ['id' => $nasabah->id]);
         $this->assertDatabaseMissing('users', ['email' => 'student-updated@example.test']);
+    }
+
+    public function test_old_petugas_roles_are_normalized_to_the_combined_role(): void
+    {
+        DB::table('users')->insert([
+            [
+                'name' => 'Petugas Sarpras Lama',
+                'email' => 'sarpras@example.test',
+                'password' => 'password',
+                'role' => 'petugas_sarpras',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'name' => 'Petugas Timbangan Lama',
+                'email' => 'timbangan@example.test',
+                'password' => 'password',
+                'role' => 'petugas_timbangan',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $migration = require database_path('migrations/2026_10_14_120000_combine_bank_sampah_staff_roles.php');
+        $migration->up();
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'sarpras@example.test',
+            'role' => 'petugas_bank_sampah',
+        ]);
+        $this->assertDatabaseHas('users', [
+            'email' => 'timbangan@example.test',
+            'role' => 'petugas_bank_sampah',
+        ]);
+        $this->assertDatabaseMissing('users', ['role' => 'petugas_sarpras']);
+        $this->assertDatabaseMissing('users', ['role' => 'petugas_timbangan']);
     }
 }

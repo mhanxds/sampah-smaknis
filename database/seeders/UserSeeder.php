@@ -17,30 +17,37 @@ class UserSeeder extends Seeder
                 'password' => 'admin123',
             ],
             [
-                'name' => 'Staf Sarpras TU',
+                'name' => 'Petugas Bank Sampah',
                 'email' => 'petugas2gmail.com',
-                'role' => 'petugas_sarpras',
+                'role' => 'petugas_bank_sampah',
                 'password' => 'petugas123',
             ],
             [
                 'name' => 'Petugas Pos Timbangan',
                 'email' => 'petugaspos@gmail.com',
-                'role' => 'petugas_timbangan',
+                'role' => 'petugas_bank_sampah',
                 'password' => 'petugaspos123',
             ],
             [
                 'name' => 'Siswa Nasabah',
                 'email' => 'nasabah@gmail.com',
-                'role' => 'siswa',
+                'role' => 'nasabah',
                 'password' => 'nasabah123',
             ],
         ];
 
         foreach ($users as $user) {
-            User::firstOrCreate(
-                ['email' => $user['email']],
-                $user
-            );
+            $existingUser = User::where('email', $user['email'])->first();
+
+            if ($existingUser) {
+                $existingUser->update([
+                    'name' => $user['name'],
+                    'role' => $user['role'],
+                ]);
+                continue;
+            }
+
+            User::create($user);
         }
     }
 }

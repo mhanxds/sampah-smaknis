@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\TransaksiSetoranController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\LogoutController;
+use App\Http\Controllers\PetugasBankSampah\DashboardController as PetugasDashboardController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -26,6 +27,13 @@ Route::post('logout', LogoutController::class)->name('logout');
 Route::view('account/pending', 'auth.portal-pending')
     ->middleware('auth')
     ->name('account.pending');
+
+Route::prefix('petugas')
+    ->name('petugas.')
+    ->middleware(['auth', 'role:petugas_bank_sampah'])
+    ->group(function () {
+        Route::get('/', [PetugasDashboardController::class, 'index'])->name('dashboard');
+    });
 
 Route::prefix('admin')
     ->name('admin.')

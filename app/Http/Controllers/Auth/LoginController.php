@@ -15,9 +15,7 @@ class LoginController extends Controller
     public function create(): View|RedirectResponse
     {
         if (Auth::check()) {
-            return in_array(Auth::user()->role, ['admin', 'admin_bank'], true)
-                ? redirect()->route('admin.dashboard')
-                : redirect()->route('account.pending');
+            return $this->redirectForRole(Auth::user()->role);
         }
 
         return view('auth.login');
@@ -46,10 +44,19 @@ class LoginController extends Controller
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
 
-        if (! in_array($user->role, ['admin', 'admin_bank'], true)) {
-            return redirect()->route('account.pending');
+        return $this->redirectForRole($user->role, redirect()->intended(route('admin.dashboard')));
+    }
+
+    private function redirectForRole(string $role, ?RedirectResponse $intended = null): RedirectResponse
+    {
+        if (in_array($role, ['admin', 'admin_bank'], true)) {
+            return $intended ?? redirect()->route('admin.dashboard');
         }
 
-        return redirect()->intended(route('admin.dashboard'));
+        if ($role === 'petugas_bank_sampah') {
+            return redirect()->route('petugas.dashboard');
+        }
+
+        return redirect()->route('account.pending');
     }
 }

@@ -7,7 +7,15 @@
     <input id="email" type="email" name="email" value="{{ old('email', $user->email) }}" required maxlength="255">
     <label for="role">Peran</label>
     <select id="role" name="role" required>
-        @foreach (['admin_bank' => 'Admin Bank', 'petugas_sarpras' => 'Petugas Sarpras', 'petugas_timbangan' => 'Petugas Timbangan', 'siswa' => 'Nasabah / Siswa'] as $value => $label)
+        @php
+            $roles = ['admin_bank' => 'Admin Bank', 'petugas_bank_sampah' => 'Petugas Bank Sampah'];
+        @endphp
+        @if ($user->exists && $user->role === 'nasabah')
+            @php
+                $roles['nasabah'] = 'Nasabah';
+            @endphp
+        @endif
+        @foreach ($roles as $value => $label)
             <option value="{{ $value }}" @selected(old('role', $user->role) === $value)>{{ $label }}</option>
         @endforeach
     </select>
